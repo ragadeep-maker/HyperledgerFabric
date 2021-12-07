@@ -7,18 +7,24 @@
 'use strict';
 
 // ./network.sh up createChannel -ca -c mychannel -s couchdb
+// ./addOrg3.sh up -ca -c mychannel -s couchdb
 // ./network.sh deployCC -ccn basic -ccp ../../mychaincode/ -ccl go
+
+
+/// while true; do docker stats --no-stream | tee --append stats.txt; sleep 1; done
+//////////////////////////////////////////////////////////////////////////////////////////////
+
 
 // ** peer chaincode invoke -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --tls --cafile "${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp tlscacerts/tlsca.example.com-cert.pem" -C mychannel -n basic --peerAddresses localhost:7051 --tlsRootCertFiles "${PWD}/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt" --peerAddresses localhost:9051 --tlsRootCertFiles "${PWD}/organizations/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/tls/ca.crt" -c '{"function":"CreateAsset","Args":["consumer","Electricity", "50", "sell"]}'
 
 
-// export PATH=${PWD}/../bin:$PATH
-// export FABRIC_CFG_PATH=$PWD/../config/
-// export CORE_PEER_TLS_ENABLED=true
-// export CORE_PEER_LOCALMSPID="Org1MSP"
-// export CORE_PEER_TLS_ROOTCERT_FILE=${PWD}/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt
-// export CORE_PEER_MSPCONFIGPATH=${PWD}/organizations/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp
-// export CORE_PEER_ADDRESS=localhost:7051
+ export PATH=${PWD}/../bin:$PATH
+ export FABRIC_CFG_PATH=$PWD/../config/
+ export CORE_PEER_TLS_ENABLED=true
+ export CORE_PEER_LOCALMSPID="Org1MSP"
+ export CORE_PEER_TLS_ROOTCERT_FILE=${PWD}/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt
+export CORE_PEER_MSPCONFIGPATH=${PWD}/organizations/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp
+export CORE_PEER_ADDRESS=localhost:7051
 
 
 // peer chaincode invoke -o localhost:7050 --ordererTLSHostnameOverride orderer.example.com --tls --cafile ${PWD}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp/tlscacerts/tlsca.example.com-cert.pem -C mychannel -n basic --peerAddresses localhost:7051 --tlsRootCertFiles ${PWD}/organizations/peerOrganizations/org1.example.com/peers/peer0.org1.example.com/tls/ca.crt --peerAddresses localhost:9051 --tlsRootCertFiles ${PWD}/organizations/peerOrganizations/org2.example.com/peers/peer0.org2.example.com/tls/ca.crt -c '{"function":"CreateAsset","Args":["consumer","Electricity", "50", "sell"]}'
@@ -141,18 +147,28 @@ async function main() {
 			// Get the contract from the network.
 			const contract = network.getContract(chaincodeName);
 			
-			const N = 20;
+			let N = 10;
 
 			const owners = ['prosumer', 'consumer', 'utility-grid'];
 			const ttypes = ['sell', 'buy'];
 
 
-			console.log('creating ', N, ' transactions');
-			for (let i = 0; i < N; i++) {
-				console.log('--> Evaluate Transaction: Create Assets, function returns transaction id on the ledger');
-				let id = await contract.submitTransaction('CreateAsset', owners[i % 3], 'Electricity', Math.floor(Math.random() * 50) + 50, ttypes[i % 2]);
-				let result = await contract.evaluateTransaction('ReadAsset', id);
-				console.log(`*** Result: ${prettyJSONString(result.toString())}`);
+			while(N <= 500){
+				console.log('creating ', N, ' transactions - ', new Date().toLocaleTimeString());
+				var start = new Date().getTime();
+
+				
+				for (let i = 0; i < N; i++) {
+					console.log('--> Evaluate Transaction: Create Assets, function returns transaction id on the ledger');
+					let id = await contract.submitTransaction('CreateAsset', owners[i % 3], 'Electricity', Math.floor(Math.random() * 50) + 50, ttypes[i % 2]);
+					let result = await contract.evaluateTransaction('ReadAsset', id);
+					console.log(`*** Result: ${prettyJSONString(result.toString())}`);
+					await wait(60*1000 / N);
+				}
+				var end = new Date().getTime();
+				var time = end - start;
+				console.log('Time taken: ' + time + ' ms');
+				N += 10;
 			}
 
 			// Let's try a query type operation (function).
